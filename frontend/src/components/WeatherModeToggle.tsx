@@ -19,11 +19,12 @@ const modes: {
 interface Props {
   value: WeatherCondition;
   onChange: (v: WeatherCondition) => void;
+  disabled?: boolean;
 }
 
-function ToggleInner({ value, onChange }: Props) {
+function ToggleInner({ value, onChange, disabled }: Props) {
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2${disabled ? " opacity-50 pointer-events-none" : ""}`}>
       <span className="text-sm text-f1-dim">Weather Condition</span>
       <div className="grid grid-cols-4 gap-1.5 p-1 bg-f1-surface rounded-lg">
         {modes.map((m) => {

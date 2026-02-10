@@ -5,9 +5,10 @@ interface Props {
   value: number;
   onChange: (v: number) => void;
   onCommit?: (v: number) => void;
+  disabled?: boolean;
 }
 
-function RainSliderInner({ value, onChange, onCommit }: Props) {
+function RainSliderInner({ value, onChange, onCommit, disabled }: Props) {
   const pct = value * 100;
   const label =
     value === 0
@@ -32,7 +33,7 @@ function RainSliderInner({ value, onChange, onCommit }: Props) {
   }, [onCommit, value]);
 
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2${disabled ? " opacity-50 pointer-events-none" : ""}`}>
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-1.5 text-f1-dim">
           <Droplets size={14} />

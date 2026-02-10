@@ -14,6 +14,8 @@ backend/cache/
 
 # Environment
 .env
+.env.*
+!.env.example
 *.env.local
 
 # IDE
@@ -30,3 +32,6 @@ Thumbs.db
 node_modules/
 frontend/dist/
 frontend/.vite/
+
+# TypeScript build cache
+*.tsbuildinfo

@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PanelLeftClose, PanelLeft, Settings, RotateCcw } from "lucide-react";
+import { PanelLeftClose, PanelLeft, RotateCcw } from "lucide-react";
 import { useStrategyStore } from "../store/useStrategyStore";
 import { RaceHeader } from "./RaceHeader";
 import { TyrePills } from "./TyrePills";
@@ -8,6 +8,7 @@ import { TemperatureSlider } from "./TemperatureSlider";
 import { WeatherModeToggle } from "./WeatherModeToggle";
 import { RainSlider } from "./RainSlider";
 import { SkeletonCard } from "./LoadingSkeleton";
+import type { WeatherCondition } from "../types";
 
 function SidebarInner() {
   const {
@@ -15,20 +16,21 @@ function SidebarInner() {
     daysUntil,
     seasonStatus,
     tyres,
-    trackTemp,
-    weatherCondition,
-    rainIntensity,
+    unifiedWeather,
     sidebarOpen,
     loadingInit,
     loadingDeg,
     loadingSim,
     toggleSidebar,
     setTrackTemp,
-    setWeatherCondition,
+    setWeatherModePreset,
     setRainIntensity,
     fetchDegradation,
     runSimulation,
   } = useStrategyStore();
+
+  const { source, trackTemp, mode, rainIntensity } = unifiedWeather;
+  const isLive = source === "live";
 
   // Debounced degradation fetch on slider commit
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -39,21 +41,21 @@ function SidebarInner() {
     }, 300);
   }, [fetchDegradation]);
 
-  // Weather condition change triggers immediate simulation re-run
+  // Weather mode preset triggers immediate simulation re-run
   const handleWeatherChange = useCallback(
-    (w: "dry" | "damp" | "wet" | "extreme") => {
-      setWeatherCondition(w);
+    (w: WeatherCondition) => {
+      setWeatherModePreset(w);
       // Slight delay so state settles
       setTimeout(() => runSimulation(), 50);
     },
-    [setWeatherCondition, runSimulation]
+    [setWeatherModePreset, runSimulation],
   );
 
   const handleRainCommit = useCallback(() => {
     setTimeout(() => runSimulation(), 50);
   }, [runSimulation]);
 
-  const showWetControls = weatherCondition !== "dry";
+  const showWetControls = mode !== "dry";
 
   return (
     <>
@@ -121,11 +123,13 @@ function SidebarInner() {
                   value={trackTemp}
                   onChange={setTrackTemp}
                   onCommit={handleTempCommit}
+                  disabled={isLive}
                 />
 
                 <WeatherModeToggle
-                  value={weatherCondition}
+                  value={mode}
                   onChange={handleWeatherChange}
+                  disabled={isLive}
                 />
 
                 {/* Rain intensity (only in wet modes) */}
@@ -141,6 +145,7 @@ function SidebarInner() {
                         value={rainIntensity}
                         onChange={setRainIntensity}
                         onCommit={handleRainCommit}
+                        disabled={isLive}
                       />
                     </motion.div>
                   )}

@@ -5,11 +5,45 @@ import type {
   WeatherResponse,
   DegradationResponse,
   SimulateResponse,
+  CircuitHistoricalProfile,
   WeatherCondition,
+  WeatherSource,
+  UnifiedWeather,
   TabId,
   CompoundParams,
 } from "../types";
+import { deriveWeatherMode } from "../types";
 import * as api from "../lib/api";
+
+/* ------------------------------------------------------------------ */
+/* Helpers                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Extract unified weather values from the backend API response. */
+function weatherFromApi(
+  apiData: WeatherResponse,
+): Omit<UnifiedWeather, "source"> {
+  const hourly = apiData.hourly.slice(0, 6);
+  const rainProbability =
+    hourly.length > 0
+      ? Math.max(...hourly.map((h) => h.rain_probability))
+      : 0;
+  const windSpeed =
+    hourly.length > 0
+      ? hourly.reduce((s, h) => s + h.wind_speed_ms, 0) / hourly.length
+      : 0;
+  // Best approximation — the API provides probability, not measured intensity.
+  const rainIntensity = rainProbability;
+
+  return {
+    airTemp: apiData.current_air_temp_c ?? 25,
+    trackTemp: Math.round(apiData.current_track_temp_c ?? 35),
+    rainProbability,
+    rainIntensity,
+    windSpeed: Math.round(windSpeed * 10) / 10,
+    mode: deriveWeatherMode(rainProbability, rainIntensity),
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /* Store shape                                                        */
@@ -21,18 +55,28 @@ interface StrategyState {
   daysUntil: number;
   seasonStatus: string;
 
-  /* --- User controls --- */
-  trackTemp: number;
-  weatherCondition: WeatherCondition;
-  rainIntensity: number;
+  /* --- Unified weather (single source of truth) --- */
+  unifiedWeather: UnifiedWeather;
+
+  /* --- User controls (non-weather) --- */
   baseLapTimeOverride: number | null;
   pitLossOverride: number | null;
 
   /* --- Data --- */
   tyres: TyreNominationResponse | null;
-  weather: WeatherResponse | null;
+  weatherApi: WeatherResponse | null;
   degradation: DegradationResponse | null;
   simulation: SimulateResponse | null;
+  historicalProfile: CircuitHistoricalProfile | null;
+
+  /** Snapshot of weather conditions used for the last simulation run. */
+  simWeatherSnapshot: {
+    source: WeatherSource;
+    trackTemp: number;
+    mode: WeatherCondition;
+    liveTrackTemp: number | null;
+    liveMode: WeatherCondition | null;
+  } | null;
 
   /* --- UI --- */
   activeTab: TabId;
@@ -47,9 +91,10 @@ interface StrategyState {
   /* --- Actions --- */
   setActiveTab: (tab: TabId) => void;
   toggleSidebar: () => void;
+  setWeatherSource: (source: WeatherSource) => void;
   setTrackTemp: (t: number) => void;
-  setWeatherCondition: (w: WeatherCondition) => void;
   setRainIntensity: (r: number) => void;
+  setWeatherModePreset: (mode: WeatherCondition) => void;
   setBaseLapTimeOverride: (v: number | null) => void;
   setPitLossOverride: (v: number | null) => void;
   clearError: () => void;
@@ -70,16 +115,25 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
   daysUntil: 0,
   seasonStatus: "pre_season",
 
-  trackTemp: 35,
-  weatherCondition: "dry",
-  rainIntensity: 0,
+  unifiedWeather: {
+    source: "live",
+    airTemp: 25,
+    trackTemp: 35,
+    rainProbability: 0,
+    rainIntensity: 0,
+    windSpeed: 0,
+    mode: "dry",
+  },
+
   baseLapTimeOverride: null,
   pitLossOverride: null,
 
   tyres: null,
-  weather: null,
+  weatherApi: null,
   degradation: null,
   simulation: null,
+  historicalProfile: null,
+  simWeatherSnapshot: null,
 
   activeTab: "overview",
   sidebarOpen: true,
@@ -93,9 +147,72 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  setTrackTemp: (t) => set({ trackTemp: t }),
-  setWeatherCondition: (w) => set({ weatherCondition: w }),
-  setRainIntensity: (r) => set({ rainIntensity: r }),
+
+  setWeatherSource: (source) => {
+    const state = get();
+    if (source === "live") {
+      if (!state.weatherApi) return;
+      const liveWeather = weatherFromApi(state.weatherApi);
+      const prevTrackTemp = state.unifiedWeather.trackTemp;
+      set({ unifiedWeather: { source: "live", ...liveWeather } });
+      // If track temp changed, refetch degradation (which chains to simulation).
+      // Otherwise just re-run simulation with updated weather params.
+      if (liveWeather.trackTemp !== prevTrackTemp) {
+        get().fetchDegradation();
+      } else {
+        get().runSimulation();
+      }
+    } else {
+      // Switch to manual — keep current values so user can fine-tune
+      set((s) => ({
+        unifiedWeather: { ...s.unifiedWeather, source: "manual" },
+      }));
+    }
+  },
+
+  setTrackTemp: (t) =>
+    set((s) => ({
+      unifiedWeather: { ...s.unifiedWeather, trackTemp: t },
+    })),
+
+  setRainIntensity: (r) =>
+    set((s) => {
+      // In manual mode, keep rainProbability synced with rainIntensity
+      const rainProbability =
+        s.unifiedWeather.source === "manual" ? r : s.unifiedWeather.rainProbability;
+      return {
+        unifiedWeather: {
+          ...s.unifiedWeather,
+          rainIntensity: r,
+          rainProbability,
+          mode: deriveWeatherMode(rainProbability, r),
+        },
+      };
+    }),
+
+  /** Quick-set rain presets so the mode derives to the selected condition. */
+  setWeatherModePreset: (mode) =>
+    set((s) => {
+      const presets: Record<
+        WeatherCondition,
+        { rainProbability: number; rainIntensity: number }
+      > = {
+        dry: { rainProbability: 0, rainIntensity: 0 },
+        damp: { rainProbability: 0.25, rainIntensity: 0.25 },
+        wet: { rainProbability: 0.5, rainIntensity: 0.5 },
+        extreme: { rainProbability: 0.85, rainIntensity: 0.85 },
+      };
+      const p = presets[mode];
+      return {
+        unifiedWeather: {
+          ...s.unifiedWeather,
+          rainProbability: p.rainProbability,
+          rainIntensity: p.rainIntensity,
+          mode: deriveWeatherMode(p.rainProbability, p.rainIntensity),
+        },
+      };
+    }),
+
   setBaseLapTimeOverride: (v) => set({ baseLapTimeOverride: v }),
   setPitLossOverride: (v) => set({ pitLossOverride: v }),
   clearError: () => set({ error: null }),
@@ -108,22 +225,24 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
       const nextRace = await api.fetchNextRace();
       const race = nextRace.event;
 
-      // Parallel fetches for tyres + weather
-      const [tyres, weather] = await Promise.all([
+      // Parallel fetches for tyres + weather + historical
+      const [tyres, weatherApi, historicalProfile] = await Promise.all([
         api.fetchTyreNominations(race.circuit_key),
         api.fetchWeather(race.lat, race.lon, race.circuit_full_name),
+        api.fetchHistoricalProfile(race.circuit_key).catch(() => null),
       ]);
 
-      // Use weather track temp if available
-      const initialTemp = weather.current_track_temp_c ?? 35;
+      // Sync unified weather from API response
+      const liveWeather = weatherFromApi(weatherApi);
 
       set({
         race,
         daysUntil: nextRace.days_until,
         seasonStatus: nextRace.season_status,
         tyres,
-        weather,
-        trackTemp: Math.round(initialTemp),
+        weatherApi,
+        historicalProfile,
+        unifiedWeather: { source: "live", ...liveWeather },
         loadingInit: false,
       });
 
@@ -140,12 +259,15 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
   /* ---- fetch degradation for current circuit + temp ---- */
 
   fetchDegradation: async () => {
-    const { race, trackTemp } = get();
+    const { race, unifiedWeather } = get();
     if (!race) return;
 
     set({ loadingDeg: true });
     try {
-      const deg = await api.fetchDegradation(race.circuit_key, trackTemp);
+      const deg = await api.fetchDegradation(
+        race.circuit_key,
+        unifiedWeather.trackTemp,
+      );
       set({ degradation: deg, loadingDeg: false });
 
       // Auto-run simulation with fresh degradation data
@@ -165,9 +287,7 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
       race,
       degradation,
       tyres,
-      trackTemp,
-      weatherCondition,
-      rainIntensity,
+      unifiedWeather,
       baseLapTimeOverride,
       pitLossOverride,
     } = get();
@@ -209,17 +329,29 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
         degradation.compounds[softest]?.avg_reference_lap_s ??
         85;
 
+      // Snapshot weather conditions used for this simulation run
+      const weatherApi = get().weatherApi;
+      const liveWeather = weatherApi ? weatherFromApi(weatherApi) : null;
+      const snapshot = {
+        source: unifiedWeather.source,
+        trackTemp: unifiedWeather.trackTemp,
+        mode: unifiedWeather.mode,
+        liveTrackTemp: liveWeather?.trackTemp ?? null,
+        liveMode: liveWeather?.mode ?? null,
+      };
+
       const sim = await api.runSimulation({
         total_laps: race.laps ?? 58,
         pit_loss_seconds: pitLossOverride ?? race.pit_loss ?? 22,
         base_lap_time_s: refLap,
-        track_temp_c: trackTemp,
-        weather_condition: weatherCondition,
-        rain_intensity: rainIntensity,
+        track_temp_c: unifiedWeather.trackTemp,
+        weather_condition: unifiedWeather.mode,
+        rain_intensity: unifiedWeather.rainIntensity,
         compounds,
+        circuit_key: race.circuit_key,
       });
 
-      set({ simulation: sim, loadingSim: false });
+      set({ simulation: sim, simWeatherSnapshot: snapshot, loadingSim: false });
     } catch (e: any) {
       set({
         loadingSim: false,

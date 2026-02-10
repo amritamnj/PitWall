@@ -6,6 +6,7 @@ import type {
   DegradationResponse,
   SimulateRequest,
   SimulateResponse,
+  CircuitHistoricalProfile,
 } from "../types";
 
 const client = axios.create({ baseURL: "/api/v1", timeout: 120_000 });
@@ -52,6 +53,24 @@ export async function fetchDegradation(
   const { data } = await client.get<DegradationResponse>("/degradation/", {
     params: { circuit, track_temp: trackTemp },
   });
+  return data;
+}
+
+/* ---------- Historical ---------- */
+
+export async function fetchHistoricalProfile(
+  circuitKey: string,
+  seasons?: number[]
+): Promise<CircuitHistoricalProfile> {
+  const { data } = await client.get<CircuitHistoricalProfile>(
+    "/historical/profile",
+    {
+      params: {
+        circuit_key: circuitKey,
+        ...(seasons ? { seasons: seasons.join(",") } : {}),
+      },
+    }
+  );
   return data;
 }
 

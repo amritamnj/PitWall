@@ -1,17 +1,20 @@
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Trophy, Clock, ArrowDown } from "lucide-react";
 import clsx from "clsx";
-import type { StrategyResult } from "../types";
+import type { StrategyResult, SimulateResponse } from "../types";
 import { COMPOUND_COLORS } from "../lib/constants";
+import { extractRuleHits } from "../lib/rules";
+import { StrategyExplanation } from "./StrategyExplanation";
 
 interface Props {
   strategies: StrategyResult[];
   recommended: string;
   deltaS: number;
+  simulation: SimulateResponse;
 }
 
-function StrategyTableInner({ strategies, recommended, deltaS }: Props) {
+function StrategyTableInner({ strategies, recommended, deltaS, simulation }: Props) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const bestTime = strategies.length > 0 ? strategies[0].total_time_s : 0;
 
@@ -213,6 +216,14 @@ function StrategyTableInner({ strategies, recommended, deltaS }: Props) {
                         ))}
                       </tbody>
                     </table>
+
+                    {/* AI explanation */}
+                    <div className="mt-4 pt-3 border-t border-f1-border/20">
+                      <ExpandedExplanation
+                        strategy={strat}
+                        simulation={simulation}
+                      />
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -222,6 +233,21 @@ function StrategyTableInner({ strategies, recommended, deltaS }: Props) {
       })}
     </motion.div>
   );
+}
+
+/** Memoized wrapper that extracts rule hits for a single strategy. */
+function ExpandedExplanation({
+  strategy,
+  simulation,
+}: {
+  strategy: StrategyResult;
+  simulation: SimulateResponse;
+}) {
+  const ruleHits = useMemo(
+    () => extractRuleHits(strategy, simulation),
+    [strategy, simulation],
+  );
+  return <StrategyExplanation ruleHits={ruleHits} />;
 }
 
 export const StrategyTable = memo(StrategyTableInner);

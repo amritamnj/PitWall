@@ -75,6 +75,7 @@ export interface SimulateRequest {
   weather_condition: string;
   rain_intensity: number;
   compounds: Record<string, CompoundParams>;
+  circuit_key?: string;
 }
 
 export interface StintDetail {
@@ -98,6 +99,8 @@ export interface StrategyResult {
   pit_stop_laps: number[];
   stints: StintDetail[];
   weather_note: string;
+  historical_adjustment_s?: number;
+  historical_notes?: string[];
 }
 
 export interface SimulateResponse {
@@ -136,5 +139,101 @@ export interface WeatherResponse {
   note: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* Historical strategy intelligence                                   */
+/* ------------------------------------------------------------------ */
+
+export interface FirstStopLapStats {
+  median: number;
+  p25: number;
+  p75: number;
+  iqr: number;
+  n: number;
+}
+
+export interface StopCountDistribution {
+  one_stop_pct: number;
+  two_stop_pct: number;
+  three_plus_pct: number;
+  n: number;
+}
+
+export interface StrategySequenceInfo {
+  stops: number;
+  sequence: string[];
+  frequency_pct: number;
+  n: number;
+}
+
+export interface UndercutOvercutStats {
+  undercut_attempts: number;
+  undercut_success_rate: number;
+  overcut_attempts: number;
+  overcut_success_rate: number;
+  typical_undercut_gain_s: number;
+  notes: string;
+}
+
+export interface CircuitHistoricalProfile {
+  circuit_key: string;
+  seasons_used: number[];
+  races_used: number;
+  first_stop_lap: FirstStopLapStats | null;
+  stop_count_distribution: StopCountDistribution | null;
+  common_strategy_sequences: StrategySequenceInfo[];
+  safety_car_lap_histogram: Record<string, number> | null;
+  undercut_overcut: UndercutOvercutStats | null;
+  warmup_traffic: { pit_outlap_penalty_s: number } | null;
+  notes: string[];
+  cache_version: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* AI explanation layer — structured rule hits                        */
+/* ------------------------------------------------------------------ */
+
+export interface RuleHit {
+  category: string;
+  rule_name: string;
+  observed_value: string;
+  impact: string;
+}
+
 export type WeatherCondition = "dry" | "damp" | "wet" | "extreme";
+export type WeatherSource = "live" | "manual";
 export type TabId = "overview" | "degradation" | "strategy";
+
+/* ------------------------------------------------------------------ */
+/* Unified weather — single source of truth for all weather consumers */
+/* ------------------------------------------------------------------ */
+
+export interface UnifiedWeather {
+  source: WeatherSource;
+  airTemp: number;
+  trackTemp: number;
+  rainProbability: number;
+  rainIntensity: number;
+  windSpeed: number;
+  mode: WeatherCondition;
+}
+
+/**
+ * Derive weather mode deterministically from rain values.
+ * This is the ONLY place mode derivation logic lives (no backend duplicate).
+ *
+ * score = rainProbability * 0.4 + rainIntensity * 0.6
+ *   < 0.15  → dry
+ *   < 0.40  → damp
+ *   < 0.70  → wet
+ *   ≥ 0.70  → extreme
+ */
+export function deriveWeatherMode(
+  rainProbability: number,
+  rainIntensity: number,
+): WeatherCondition {
+  const score = rainProbability * 0.4 + rainIntensity * 0.6;
+  if (score < 0.15) return "dry";
+  if (score < 0.4) return "damp";
+  if (score < 0.7) return "wet";
+  return "extreme";
+}

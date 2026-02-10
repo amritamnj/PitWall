@@ -27,12 +27,18 @@ Crossover timing:
         extreme: crossover ≈ total_laps * rain_intensity * 0.8
 """
 
+import logging
 from enum import Enum
 from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from utils.cache import read_cache
+from utils.fastf1_helpers import HISTORICAL_YEARS, normalize_circuit_name
+from utils.historical_scoring import apply_historical_alignment
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/simulate", tags=["simulate"])
 
 
@@ -65,6 +71,9 @@ class SimulateRequest(BaseModel):
     compounds: dict[str, CompoundParams] = Field(
         ..., description="Slick compound params keyed by code (C1–C5)",
     )
+    circuit_key: Optional[str] = Field(
+        None, description="Circuit key for historical alignment scoring",
+    )
 
 
 class StintDetail(BaseModel):
@@ -88,6 +97,8 @@ class StrategyResult(BaseModel):
     pit_stop_laps: list[int]
     stints: list[StintDetail]
     weather_note: str = ""
+    historical_adjustment_s: float = 0.0
+    historical_notes: list[str] = []
 
 
 class SimulateResponse(BaseModel):
@@ -477,6 +488,22 @@ def simulate_strategy(req: SimulateRequest):
 
     # ---- Rank and select top results ----
     all_strategies.sort(key=lambda s: s.total_time_s)
+
+    # ---- Historical alignment scoring (optional) ----
+    if req.circuit_key:
+        try:
+            circuit = normalize_circuit_name(req.circuit_key)
+            cache_args = {
+                "circuit": circuit,
+                "seasons": str(sorted(HISTORICAL_YEARS)),
+                "version": "v1",
+            }
+            cached_profile = read_cache("historical", **cache_args)
+            if cached_profile:
+                apply_historical_alignment(all_strategies, cached_profile)
+                all_strategies.sort(key=lambda s: s.total_time_s)
+        except Exception:
+            logger.warning("Historical scoring failed — skipping", exc_info=True)
 
     if cond == "dry":
         one_stops = [s for s in all_strategies if s.stops == 1][:3]

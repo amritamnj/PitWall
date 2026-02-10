@@ -18,6 +18,7 @@ import { DegradationChart } from "../components/DegradationChart";
 import { CompoundCards } from "../components/CompoundCards";
 import { StintTimeline } from "../components/StintTimeline";
 import { StrategyTable } from "../components/StrategyTable";
+import { HistoricalContext } from "../components/HistoricalContext";
 import { SkeletonChart, SkeletonCard } from "../components/LoadingSkeleton";
 import type { TabId } from "../types";
 
@@ -168,7 +169,7 @@ export default function Home() {
 /* ------------------------------------------------------------------ */
 
 function OverviewTab() {
-  const { weather, tyres, degradation, simulation, race, loadingInit } =
+  const { tyres, degradation, simulation, race, loadingInit } =
     useStrategyStore();
 
   if (loadingInit) {
@@ -183,7 +184,7 @@ function OverviewTab() {
   return (
     <div className="space-y-5 max-w-5xl">
       {/* Weather */}
-      {weather && <WeatherSummary weather={weather} />}
+      <WeatherSummary />
 
       {/* Quick tyre info */}
       {tyres && (
@@ -347,7 +348,7 @@ function DegradationTab() {
 /* ------------------------------------------------------------------ */
 
 function StrategyTab() {
-  const { simulation, race, loadingSim, runSimulation } = useStrategyStore();
+  const { simulation, race, historicalProfile, loadingSim, runSimulation } = useStrategyStore();
 
   const handleRun = useCallback(() => {
     runSimulation();
@@ -406,6 +407,14 @@ function StrategyTab() {
         </button>
       </div>
 
+      {/* Historical Context */}
+      {historicalProfile && historicalProfile.races_used > 0 && (
+        <HistoricalContext
+          profile={historicalProfile}
+          totalLaps={race?.laps ?? simulation.total_laps}
+        />
+      )}
+
       {/* Stint Timeline */}
       <StintTimeline
         strategies={simulation.strategies}
@@ -418,6 +427,7 @@ function StrategyTab() {
         strategies={simulation.strategies}
         recommended={simulation.recommended}
         deltaS={simulation.delta_s}
+        simulation={simulation}
       />
     </div>
   );

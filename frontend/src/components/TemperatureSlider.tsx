@@ -8,9 +8,10 @@ interface Props {
   onCommit?: (v: number) => void;
   min?: number;
   max?: number;
+  disabled?: boolean;
 }
 
-function SliderInner({ value, onChange, onCommit, min = 15, max = 55 }: Props) {
+function SliderInner({ value, onChange, onCommit, min = 15, max = 55, disabled }: Props) {
   const commitRef = useRef(onCommit);
   commitRef.current = onCommit;
 
@@ -32,7 +33,7 @@ function SliderInner({ value, onChange, onCommit, min = 15, max = 55 }: Props) {
   }, [value]);
 
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2${disabled ? " opacity-50 pointer-events-none" : ""}`}>
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-1.5 text-f1-dim">
           <Thermometer size={14} />
