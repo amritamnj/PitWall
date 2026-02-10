@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #262a36 transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: #262a36;
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #3a3f4f;
+  }
+
+  ::selection {
+    background-color: rgba(234, 179, 8, 0.3);
+    color: #fff;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-f1-card/80 backdrop-blur-sm border border-f1-border rounded-xl;
+  }
+
+  .skeleton {
+    @apply bg-gradient-to-r from-f1-card via-f1-border/30 to-f1-card bg-[length:200%_100%] animate-shimmer rounded;
+  }
+
+  .compound-pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
+           border transition-all duration-200 hover:scale-105;
+  }
+
+  .tab-button {
+    @apply relative px-5 py-2.5 text-sm font-medium transition-all duration-200
+           text-f1-dim hover:text-f1-text;
+  }
+
+  .tab-button.active {
+    @apply text-f1-text;
+  }
+
+  .tab-button.active::after {
+    content: "";
+    @apply absolute bottom-0 left-1 right-1 h-0.5 bg-gradient-to-r from-compound-c3 to-compound-c4 rounded-full;
+  }
+
+  .glow-border {
+    @apply relative;
+  }
+
+  .glow-border::before {
+    content: "";
+    @apply absolute -inset-[1px] rounded-xl opacity-60;
+    background: linear-gradient(
+      135deg,
+      rgba(234, 179, 8, 0.4),
+      rgba(239, 68, 68, 0.4),
+      rgba(234, 179, 8, 0.4)
+    );
+    z-index: -1;
+    filter: blur(8px);
+  }
+
+  .slider-track {
+    @apply w-full h-1.5 rounded-full bg-f1-border appearance-none cursor-pointer;
+  }
+
+  .slider-track::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-compound-c3 cursor-pointer
+           shadow-lg shadow-compound-c3/30 transition-transform duration-150 hover:scale-125;
+  }
+
+  .slider-track::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full bg-compound-c3 cursor-pointer border-0
+           shadow-lg shadow-compound-c3/30;
+  }
+}
+
+/* Recharts tooltip custom styling */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+/* Framer motion layout animation helper */
+.will-change-transform {
+  will-change: transform;
+}
