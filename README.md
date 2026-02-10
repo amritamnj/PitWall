@@ -1,30 +1,69 @@
 # PitWall 🏁  
-An explainable, data-driven Formula 1 race strategy explorer.
+**A transparent, data-driven Formula 1 race strategy explorer.**
 
-PitWall is an interactive web application that lets users explore tyre degradation behaviour and pit-stop strategy “what-if” scenarios for upcoming F1 race weekends.  
-Rather than black-box predictions, PitWall focuses on **transparent, rule-based modelling** grounded in real historical data, live race metadata, and weather-aware adjustments.
+PitWall is an end-to-end Formula 1 race strategy analysis tool that explores why certain strategies work — not just which one is fastest.
 
-This project is built as an **educational decision-support tool** — designed to help users understand *why* certain strategies work under specific conditions.
-
----
-
-## Core Features
-
-- 🔍 **Automatic race detection** using live F1 calendar data  
-- 🎯 **Pirelli-aware tyre modelling** (slicks, inters, wets with compound mapping)
-- 🌡️ **Weather & track temperature controls** with dry / damp / wet modes
-- 📉 **Tyre degradation engine** built from real historical stints (FastF1)
-- ⏱️ **Strategy simulator** evaluating realistic 1-stop and 2-stop strategies
-- 📊 **Interactive visualisations** for degradation curves and stint timelines
-- ✨ Polished UI with animations and a dark, pit-wall-inspired aesthetic
+Unlike black-box prediction models, PitWall uses **explicit rules, real historical data, and deterministic simulations** to surface trade-offs between theoretical pace, historical race behaviour, and execution risk. Every recommendation is explainable.
 
 ---
+## ✨ What PitWall Does
+PitWall lets users explore race-weekend “what-if” scenarios by combining:
+- Physics-based tyre degradation modelling
+- Real historical race data (FastF1)
+- Live or manual weather inputs
+- Transparent rule-based reasoning
 
-## Tech Stack
+It answers questions like:
+- *What strategy is fastest in clean air?*
+- *What strategies usually happen at this circuit?*
+- *How risky is this plan historically?*
+- *Where does this strategy break if conditions change?*
+
+## 🧠 Design Philosophy
+PitWall is **not** a prediction engine.
+
+It is a decision-support system designed around three layered lenses:
+
+### 1️⃣ Theoretical Optimum
+
+Physics-based simulation using:
+- Tyre degradation curves (piecewise linear + cliff)
+- Stint length limits
+- Pit loss
+- Total race time minimisation
+
+>“What is fastest in ideal conditions?”
+
+### 2️⃣ Historical Reality
+
+Computed from real race data using FastF1:
+- First-stop lap distributions (median + IQR)
+- Stop count distributions (1-stop vs 2-stop vs chaos)
+- Common strategy sequences
+- Undercut / overcut effectiveness
+- Out-lap penalties and traffic proxies
+- Safety Car lap histograms (where data permits)
+
+>“What actually happens here?”
+
+Historical signals influence strategy ranking — they never override physics.
+
+### 3️⃣ Execution Risk
+
+How fragile a strategy is once the race starts:
+- Distance from historical norms
+- Number of cliff laps
+- Dependency on undercuts
+- Sensitivity to safety cars or weather volatility
+
+>“How robust is this plan when reality intervenes?”
+
+
+## 🏗️ Architecture & Tech Stack
 
 ### Backend
 - **FastAPI** (Python)
-- Modular routers for calendar, weather, tyres, degradation, and simulation
+- Modular routers for ```calendar```, ```weather```, ```tyres```, ```degradation```, ```simulation```, ```historical```
 - **FastF1** for historical lap and stint data
 - **OpenF1 API** for race calendar and session metadata
 - **OpenWeatherMap** for weather forecasts
@@ -34,37 +73,74 @@ This project is built as an **educational decision-support tool** — designed t
 - **React + Vite + TypeScript**
 - **Zustand** for cascading state management
 - **Tailwind CSS** (dark-mode-first design)
-- **Recharts** for degradation visualisation
+- **Recharts** + custom timelines for degradation and stints
 - **Framer Motion** for UI transitions and interaction polish
 
----
+## 📊 Key Features
 
-## How It Works (High Level)
+#### Dynamic Race Context
+- Auto-detects upcoming race via OpenF1
+- Circuit metadata, lap count, pit loss, sprint flags
+- Countdown to race weekend
 
-1. The app detects the **next race weekend** using OpenF1 session data  
-2. Weather forecasts are fetched and converted into **track temperature estimates**  
-3. Historical stints from FastF1 are used to generate **compound-specific degradation curves**  
-4. A piecewise model applies:
-   - linear degradation early in the stint  
-   - accelerated degradation after a compound-specific “cliff”
-5. The strategy engine evaluates multiple realistic pit-stop combinations
-6. Results are ranked and visualised with **full explainability**
+#### Tyre Degradation Engine
+- Real historical stints extracted via FastF1
+- Per-compound degradation rate, cliff onset, and cliff severity
+- Temperature-adjusted degradation
+- Visual degradation curves with cliff markers
 
----
+#### Strategy Simulator
+- Evaluates realistic 1-stop and 2-stop strategies
+- Supports dry, damp, and wet conditions
+- Handles intermediate → slick crossover logic
+- Outputs ranked strategies with full stint breakdowns
 
-## Running Locally
+#### Historical Strategy Intelligence
+- Circuit-specific historical profiles (cached)
+- First-stop windows (median + IQR)
+- Stop count distributions
+- Common strategy sequences
+- Undercut success rates and typical gains
+- Historical signals apply small, transparent adjustments to strategy ranking
+
+#### Strategy Explanations (Deterministic)
+- Rule-based explanation layer (no ML required)
+- Every explanation is generated only from simulation outputs and historical metrics
+- Clearly labels simulated conditions vs live weather
+- No predictions, no assumptions, no hallucinations
+
+## 🔍 Transparency by Design
+PitWall prioritises explainability:
+- Every number shown is computed or sourced
+- Historical data includes sample sizes and caveats
+- If data is insufficient, PitWall says so
+- Explanations reflect what was simulated, not what “might happen”
+
+This mirrors how real race engineers reason under uncertainty.
+
+
+## 🚫 What PitWall Intentionally Does *Not* Do (Yet)
+- No live timing or position simulation
+- No driver-specific performance modelling
+- No Monte Carlo randomness in baseline recommendations
+- No opaque machine-learning predictions
+
+These are conscious design choices to preserve clarity and trust.
+
+
+## 🧪 Data Sources & Credits
+- FastF1 – historical race sessions and stints
+- OpenF1 – live race calendar and session metadata
+- OpenWeatherMap – weather forecasts
+
+
+## 🚀 Getting Started
 
 ### Backend (FastAPI)
 ```bash
 cd backend
-python -m venv .venv
-# Activate venv:
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-
 pip install -r requirements.txt
-cp .env.example .env   # add your OpenWeatherMap API key
-uvicorn app.main:app --reload --port 8000
+uvicorn main:app --reload
 ```
 ### Frontend
 ```bash
@@ -73,30 +149,22 @@ npm install
 npm run dev
 ```
 The frontend proxies API calls to the backend via Vite (```/api → http://localhost:8000```).
+Optional environment variables:
+```bash
+# Backend
+OPENWEATHER_API_KEY=your_key_here
 
-### Design Philosophy
-PitWall intentionally avoids machine learning in favour of:
-- Explainable logic
-- Real historical grounding
-- Clear cause-and-effect relationships
+# Frontend (optional – explanation works without it)
+VITE_OPENAI_API_KEY=optional
+```
+## 📌 Project Status
+PitWall is a complete, working v1 focused on correctness, realism, and explainability.
 
-This makes the tool suitable for:
-- F1 fans wanting to understand race commentary
-- Students learning decision systems and modelling
-- Junior analysts and engineers
-- Sim-racing and strategy enthusiasts
-
-### Known Limitations (Intentional MVP Scope)
-- Time-only simulation (no position or overtake modelling)
-- Simplified wet-weather crossover logic
-- No Safety Car / VSC modelling yet
-- Pirelli compound nominations may be config-based per track
-- Weather API key required for forecast data
-
-### Data Sources & Credits
-- FastF1 – historical race sessions and stints
-- OpenF1 – live race calendar and session metadata
-- OpenWeatherMap – weather forecasts
-
+Future extensions could include:
+- Strategy robustness scoring
+- Live race re-planning
+- Driver-specific modelling
+- Monte Carlo variability (opt-in)
+--- 
 ### License
 MIT
