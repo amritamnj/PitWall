@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   LineChart,
   Target,
+  Grid3X3,
   AlertTriangle,
   X,
   Play,
@@ -20,6 +21,7 @@ import { StintTimeline } from "../components/StintTimeline";
 import { StrategyTable } from "../components/StrategyTable";
 import { HistoricalContext } from "../components/HistoricalContext";
 import { SkeletonChart, SkeletonCard } from "../components/LoadingSkeleton";
+import { GridTab } from "../components/grid";
 import type { TabId } from "../types";
 
 /* ------------------------------------------------------------------ */
@@ -30,6 +32,7 @@ const TABS: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "degradation", label: "Degradation", icon: LineChart },
   { id: "strategy", label: "Strategy", icon: Target },
+  { id: "grid", label: "Grid", icon: Grid3X3 },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -155,6 +158,18 @@ export default function Home() {
                 transition={{ duration: 0.25 }}
               >
                 <StrategyTab />
+              </motion.div>
+            )}
+            {activeTab === "grid" && (
+              <motion.div
+                key="grid"
+                variants={pageVariants}
+                initial="initial"
+                animate="in"
+                exit="out"
+                transition={{ duration: 0.25 }}
+              >
+                <GridTab />
               </motion.div>
             )}
           </AnimatePresence>

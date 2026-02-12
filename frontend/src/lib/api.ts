@@ -7,6 +7,9 @@ import type {
   SimulateRequest,
   SimulateResponse,
   CircuitHistoricalProfile,
+  GridCalendarResponse,
+  GridDriversResponse,
+  GridTeamsResponse,
 } from "../types";
 
 const client = axios.create({ baseURL: "/api/v1", timeout: 120_000 });
@@ -71,6 +74,23 @@ export async function fetchHistoricalProfile(
       },
     }
   );
+  return data;
+}
+
+/* ---------- Grid ---------- */
+
+export async function fetchGridCalendar(): Promise<GridCalendarResponse> {
+  const { data } = await client.get<GridCalendarResponse>("/grid/calendar");
+  return data;
+}
+
+export async function fetchGridDrivers(): Promise<GridDriversResponse> {
+  const { data } = await client.get<GridDriversResponse>("/grid/drivers");
+  return data;
+}
+
+export async function fetchGridTeams(): Promise<GridTeamsResponse> {
+  const { data } = await client.get<GridTeamsResponse>("/grid/teams");
   return data;
 }
 

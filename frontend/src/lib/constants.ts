@@ -56,6 +56,34 @@ export const FLAG_EMOJI: Record<string, string> = {
   "United Arab Emirates": "\u{1F1E6}\u{1F1EA}",
 };
 
+/** 3-letter country code → flag emoji (for driver nationalities). */
+export const COUNTRY_CODE_FLAGS: Record<string, string> = {
+  NED: "\u{1F1F3}\u{1F1F1}",
+  GBR: "\u{1F1EC}\u{1F1E7}",
+  MON: "\u{1F1F2}\u{1F1E8}",
+  AUS: "\u{1F1E6}\u{1F1FA}",
+  ESP: "\u{1F1EA}\u{1F1F8}",
+  CAN: "\u{1F1E8}\u{1F1E6}",
+  FRA: "\u{1F1EB}\u{1F1F7}",
+  GER: "\u{1F1E9}\u{1F1EA}",
+  MEX: "\u{1F1F2}\u{1F1FD}",
+  JPN: "\u{1F1EF}\u{1F1F5}",
+  THA: "\u{1F1F9}\u{1F1ED}",
+  FIN: "\u{1F1EB}\u{1F1EE}",
+  CHN: "\u{1F1E8}\u{1F1F3}",
+  DEN: "\u{1F1E9}\u{1F1F0}",
+  ITA: "\u{1F1EE}\u{1F1F9}",
+  BRA: "\u{1F1E7}\u{1F1F7}",
+  USA: "\u{1F1FA}\u{1F1F8}",
+  NZL: "\u{1F1F3}\u{1F1FF}",
+  ISR: "\u{1F1EE}\u{1F1F1}",
+  ARG: "\u{1F1E6}\u{1F1F7}",
+  SUI: "\u{1F1E8}\u{1F1ED}",
+  IND: "\u{1F1EE}\u{1F1F3}",
+  POL: "\u{1F1F5}\u{1F1F1}",
+  RUS: "\u{1F1F7}\u{1F1FA}",
+};
+
 /**
  * Generate a theoretical degradation curve from compound parameters.
  * Returns one { lap, delta } point per lap (0-indexed).

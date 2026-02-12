@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import calendar, weather, degradation, simulate, tyres, historical
+from routers import calendar, weather, degradation, simulate, tyres, historical, grid
 
 load_dotenv(Path(__file__).parent / ".env")
 
@@ -58,6 +58,7 @@ app.include_router(weather.router)
 app.include_router(degradation.router)
 app.include_router(simulate.router)
 app.include_router(historical.router)
+app.include_router(grid.router)
 
 
 @app.get("/", tags=["health"])
@@ -74,6 +75,9 @@ def root():
             "/api/v1/degradation",
             "/api/v1/simulate",
             "/api/v1/historical/profile",
+            "/api/v1/grid/calendar",
+            "/api/v1/grid/drivers",
+            "/api/v1/grid/teams",
         ],
     }
 

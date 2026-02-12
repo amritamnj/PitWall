@@ -8,6 +8,7 @@ are stored separately for fast retrieval.
 
 import json
 import hashlib
+import time
 from pathlib import Path
 from typing import Any
 
@@ -33,12 +34,20 @@ def _cache_key(prefix: str, **kwargs: Any) -> str:
     return f"{prefix}_{digest}.json"
 
 
-def read_cache(subdir: str, **kwargs: Any) -> dict | None:
-    """Return cached dict or None if cache miss."""
+def read_cache(subdir: str, ttl_seconds: int | None = None, **kwargs: Any) -> dict | None:
+    """Return cached dict or None if cache miss.
+
+    If *ttl_seconds* is given, treat entries older than that as expired
+    (return None so the caller re-fetches).  Existing callers that omit
+    ttl_seconds are unaffected — entries never expire for them.
+    """
     directory = _ensure_dir(subdir)
     filename = _cache_key(subdir, **kwargs)
     filepath = directory / filename
     if filepath.exists():
+        if ttl_seconds is not None:
+            if time.time() - filepath.stat().st_mtime > ttl_seconds:
+                return None
         with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
     return None

@@ -201,7 +201,47 @@ export interface RuleHit {
 
 export type WeatherCondition = "dry" | "damp" | "wet" | "extreme";
 export type WeatherSource = "live" | "manual";
-export type TabId = "overview" | "degradation" | "strategy";
+export type TabId = "overview" | "degradation" | "strategy" | "grid";
+export type GridSubView = "calendar" | "drivers" | "teams";
+
+/* ------------------------------------------------------------------ */
+/* Grid tab — calendar, drivers, teams                                */
+/* ------------------------------------------------------------------ */
+
+export interface GridCalendarResponse {
+  events: RaceEvent[];
+  next_event: RaceEvent | null;
+  days_until_next: number;
+  season_status: string;
+  note: string;
+}
+
+export interface GridDriver {
+  driver_number: number;
+  broadcast_name: string;
+  full_name: string;
+  name_acronym: string;
+  team_name: string;
+  team_colour: string;
+  country_code: string | null;
+  headshot_url: string | null;
+}
+
+export interface GridDriversResponse {
+  drivers: GridDriver[];
+  note: string;
+}
+
+export interface GridTeamEntry {
+  team_name: string;
+  team_colour: string;
+  drivers: GridDriver[];
+}
+
+export interface GridTeamsResponse {
+  teams: GridTeamEntry[];
+  note: string;
+}
 
 /* ------------------------------------------------------------------ */
 /* Unified weather — single source of truth for all weather consumers */
